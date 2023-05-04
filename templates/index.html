@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<head>
+  <title>Copilot bot</title>
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='copilot_bot.ico') }}">
+  <link
+    rel="shortcut icon"
+    href="{{ url_for('static', filename='copilot_bot.png') }}"
+  />
+  <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}" />
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+  <img src="{{ url_for('static', filename='copilot_bot.png') }}" class="logo" />
+  <h3>Copilot Bot</h3>
+  <form action="/answer" method="post">
+    <input type="hidden" name="name" value={{data}}>
+    <div class="input-container">
+        <input type="text" name="question" placeholder="Enter a question" required />
+        <div class="spinner" id="spinner" style="display: none;"></div>
+    </div>
+    <input type="submit" value="Submit" />
+  </form>
+
+  <div><br></div>
+  <div id="text-response"></div>
+  <div class="voice-status" id="voice-status" style="display: none;">
+    <div class="spinner" id="voice-spinner"></div>
+    <span>Voice pending...</span>
+  </div>
+
+  <div class="sub_div"></div>
+  
+  <audio id="audio-response" style="display:none;" controls>
+    Your browser does not support the audio element.
+  </audio>
+  <button id="play-audio" style="display:none;">Play Audio</button>
+
+
+
+  <script>
+function isMobile() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+$(document).ready(function() {
+  // Add an event source for SSE
+  var source = new EventSource("/stream");
+
+  source.onmessage = function(event) {
+    var data = JSON.parse(event.data);
+    console.log("Received SSE data:", data);
+
+    if (data.result) {
+      $("#voice-status").hide();
+      $("#audio-response")
+        .attr("src", data.result)
+        .show();
+
+      if (isMobile()) {
+        // Show the "Play Audio" button on mobile browsers
+        $("#play-audio").show();
+      } else {
+        // Autoplay the audio on web browsers
+        document.getElementById("audio-response").play();
+      }
+    }
+  };
+
+  $("form").on("submit", function(e) {
+    e.preventDefault();
+
+    // Disable the submit button
+    $(this).find("input[type='submit']").attr("disabled", true);
+    // Show the spinner
+    $("#spinner").show();
+
+    $.ajax({
+      url: "/answer",
+      method: "POST",
+      data: $(this).serialize(),
+      success: function(response) {
+        console.log("Response:", response);
+
+        // Enable the submit button
+        $("input[type='submit']").attr("disabled", false);
+        // Hide the spinner
+        $("#spinner").hide();
+
+        $("#text-response").text(response.result);
+
+        // Show the voice status with spinner
+        $("#voice-status").show();
+
+        // Hide the "Play Audio" button
+        $("#play-audio").hide();
+      },
+    });
+  });
+
+  // Add an event listener for the "Play Audio" button
+  $("#play-audio").on("click", function() {
+    document.getElementById("audio-response").play();
+  });
+});
+
+  </script>
+</body>
+</html>
